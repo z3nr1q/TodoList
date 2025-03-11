@@ -49,10 +49,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun addTask(
         title: String,
         dueDate: Date? = null,
-        priority: TaskPriority = TaskPriority.MEDIA,
-        category: TaskCategory = TaskCategory.OUTROS
+        category: TaskCategory = TaskCategory.OUTROS,
+        useSmartPriority: Boolean = true
     ) {
         viewModelScope.launch {
+            val priority = if (useSmartPriority) {
+                TaskPrioritizer.calculateSuggestedPriority(category, dueDate, title)
+            } else {
+                TaskPriority.MEDIA
+            }
+            
             val task = Task(
                 title = title,
                 dueDate = dueDate,
@@ -60,6 +66,27 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 category = category
             )
             taskDao.insert(task)
+        }
+    }
+
+    fun recalculateTaskPriority(task: Task) {
+        viewModelScope.launch {
+            val newPriority = TaskPrioritizer.calculateSuggestedPriority(
+                task.category,
+                task.dueDate,
+                task.title
+            )
+            if (newPriority != task.priority) {
+                taskDao.update(task.copy(priority = newPriority))
+            }
+        }
+    }
+
+    fun recalculateAllPriorities() {
+        viewModelScope.launch {
+            _tasks.value.forEach { task ->
+                recalculateTaskPriority(task)
+            }
         }
     }
 
@@ -83,13 +110,27 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateTaskDueDate(task: Task, dueDate: Date?) {
         viewModelScope.launch {
-            taskDao.update(task.copy(dueDate = dueDate))
+            val updatedTask = task.copy(dueDate = dueDate)
+            // Recalcula a prioridade quando a data é atualizada
+            val newPriority = TaskPrioritizer.calculateSuggestedPriority(
+                updatedTask.category,
+                updatedTask.dueDate,
+                updatedTask.title
+            )
+            taskDao.update(updatedTask.copy(priority = newPriority))
         }
     }
 
     fun updateTaskCategory(task: Task, category: TaskCategory) {
         viewModelScope.launch {
-            taskDao.update(task.copy(category = category))
+            val updatedTask = task.copy(category = category)
+            // Recalcula a prioridade quando a categoria é atualizada
+            val newPriority = TaskPrioritizer.calculateSuggestedPriority(
+                updatedTask.category,
+                updatedTask.dueDate,
+                updatedTask.title
+            )
+            taskDao.update(updatedTask.copy(priority = newPriority))
         }
     }
 
