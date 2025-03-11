@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -13,6 +14,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.todolist.Task
 import com.example.todolist.TaskPriority
+import com.example.todolist.TaskCategory
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -23,10 +25,12 @@ fun TaskItem(
     onToggleComplete: (Task) -> Unit,
     onDelete: (Task) -> Unit,
     onUpdatePriority: (Task, TaskPriority) -> Unit,
-    onUpdateDueDate: (Task, Date?) -> Unit
+    onUpdateDueDate: (Task, Date?) -> Unit,
+    onUpdateCategory: (Task, TaskCategory) -> Unit
 ) {
     var showPriorityMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showCategoryMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -62,25 +66,49 @@ fun TaskItem(
                                 TextDecoration.None
                         )
                         
-                        // Data de vencimento
-                        task.dueDate?.let { date ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = "Data de vencimento",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = SimpleDateFormat(
-                                        "dd/MM/yyyy", 
-                                        Locale.getDefault()
-                                    ).format(date),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(start = 4.dp)
-                                )
+                        // Categoria e Data em uma linha
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            // Categoria
+                            AssistChip(
+                                onClick = { showCategoryMenu = true },
+                                label = { 
+                                    Text(
+                                        task.category.name.lowercase()
+                                            .replaceFirstChar { it.uppercase() }
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Category,
+                                        contentDescription = "Categoria",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                },
+                                modifier = Modifier.padding(end = 8.dp)
+                            )
+                            
+                            // Data de vencimento
+                            task.dueDate?.let { date ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = "Data de vencimento",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = SimpleDateFormat(
+                                            "dd/MM/yyyy", 
+                                            Locale.getDefault()
+                                        ).format(date),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -122,10 +150,38 @@ fun TaskItem(
     ) {
         TaskPriority.values().forEach { priority ->
             DropdownMenuItem(
-                text = { Text(priority.name) },
+                text = { 
+                    Text(
+                        when (priority) {
+                            TaskPriority.ALTA -> "Alta"
+                            TaskPriority.MEDIA -> "Média"
+                            TaskPriority.BAIXA -> "Baixa"
+                        }
+                    )
+                },
                 onClick = {
                     onUpdatePriority(task, priority)
                     showPriorityMenu = false
+                }
+            )
+        }
+    }
+
+    // Menu de categorias
+    DropdownMenu(
+        expanded = showCategoryMenu,
+        onDismissRequest = { showCategoryMenu = false }
+    ) {
+        TaskCategory.values().forEach { category ->
+            DropdownMenuItem(
+                text = { 
+                    Text(
+                        category.name.lowercase().replaceFirstChar { it.uppercase() }
+                    )
+                },
+                onClick = {
+                    onUpdateCategory(task, category)
+                    showCategoryMenu = false
                 }
             )
         }

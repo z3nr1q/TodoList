@@ -14,18 +14,25 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     // Estado para controlar a ordenação e filtragem
     private val _filterCompleted = MutableStateFlow<Boolean?>(null)
     private val _sortByPriority = MutableStateFlow(false)
+    private val _filterCategory = MutableStateFlow<TaskCategory?>(null)
 
     // Combina os filtros com as tarefas
     val tasks: StateFlow<List<Task>> = combine(
         taskDao.getAllTasks(),
         _filterCompleted,
-        _sortByPriority
-    ) { tasks, filterCompleted, sortByPriority ->
+        _sortByPriority,
+        _filterCategory
+    ) { tasks, filterCompleted, sortByPriority, filterCategory ->
         var result = tasks
         
         // Aplica filtro de status (completo/incompleto)
         filterCompleted?.let { completed ->
             result = result.filter { it.isCompleted == completed }
+        }
+
+        // Aplica filtro de categoria
+        filterCategory?.let { category ->
+            result = result.filter { it.category == category }
         }
 
         // Aplica ordenação por prioridade
@@ -54,13 +61,19 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             emptyList()
         )
 
-    fun addTask(title: String, dueDate: Date? = null, priority: TaskPriority = TaskPriority.MEDIA) {
+    fun addTask(
+        title: String, 
+        dueDate: Date? = null, 
+        priority: TaskPriority = TaskPriority.MEDIA,
+        category: TaskCategory = TaskCategory.OUTROS
+    ) {
         viewModelScope.launch {
             taskDao.insertTask(
                 Task(
                     title = title,
                     dueDate = dueDate,
-                    priority = priority
+                    priority = priority,
+                    category = category
                 )
             )
         }
@@ -90,9 +103,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateTaskCategory(task: Task, category: TaskCategory) {
+        viewModelScope.launch {
+            taskDao.updateTask(task.copy(category = category))
+        }
+    }
+
     // Funções para controlar filtros e ordenação
     fun showAllTasks() {
         _filterCompleted.value = null
+        _filterCategory.value = null
     }
 
     fun showCompletedTasks() {
@@ -101,6 +121,10 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
 
     fun showIncompleteTasks() {
         _filterCompleted.value = false
+    }
+
+    fun filterByCategory(category: TaskCategory?) {
+        _filterCategory.value = category
     }
 
     fun toggleSortByPriority() {

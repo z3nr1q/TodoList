@@ -10,6 +10,14 @@ enum class TaskPriority {
     BAIXA
 }
 
+enum class TaskCategory {
+    PESSOAL,
+    TRABALHO,
+    ESTUDOS,
+    COMPRAS,
+    OUTROS
+}
+
 @Entity(tableName = "tasks")
 data class Task(
     @PrimaryKey(autoGenerate = true)
@@ -17,5 +25,6 @@ data class Task(
     val title: String,
     val isCompleted: Boolean = false,
     val dueDate: Date? = null,
-    val priority: TaskPriority = TaskPriority.MEDIA
+    val priority: TaskPriority = TaskPriority.MEDIA,
+    val category: TaskCategory = TaskCategory.OUTROS
 )

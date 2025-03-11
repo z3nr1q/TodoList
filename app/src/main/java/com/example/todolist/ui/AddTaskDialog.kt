@@ -6,18 +6,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.todolist.TaskPriority
+import com.example.todolist.TaskCategory
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskDialog(
     onDismiss: () -> Unit,
-    onTaskAdded: (String, Date?, TaskPriority) -> Unit
+    onTaskAdded: (String, Date?, TaskPriority, TaskCategory) -> Unit
 ) {
     // Estados para armazenar os dados da tarefa
     var taskTitle by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var selectedPriority by remember { mutableStateOf(TaskPriority.MEDIA) }
+    var selectedCategory by remember { mutableStateOf(TaskCategory.OUTROS) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -58,6 +60,28 @@ fun AddTaskDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Seleção de categoria
+                Text("Categoria:", style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    TaskCategory.values().forEach { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category },
+                            label = { 
+                                Text(category.name.lowercase()
+                                    .replaceFirstChar { it.uppercase() })
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Seleção de prioridade
                 Text("Prioridade:", style = MaterialTheme.typography.bodyMedium)
                 Row(
@@ -94,7 +118,7 @@ fun AddTaskDialog(
             TextButton(
                 onClick = {
                     if (taskTitle.isNotBlank()) {
-                        onTaskAdded(taskTitle, selectedDate, selectedPriority)
+                        onTaskAdded(taskTitle, selectedDate, selectedPriority, selectedCategory)
                         onDismiss()
                     }
                 }

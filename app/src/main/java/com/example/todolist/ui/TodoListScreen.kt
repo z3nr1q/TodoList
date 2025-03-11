@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.todolist.TaskViewModel
 import com.example.todolist.Task
 import com.example.todolist.TaskPriority
+import com.example.todolist.TaskCategory
 import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,6 +26,7 @@ fun TodoListScreen(
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showFilterMenu by remember { mutableStateOf(false) }
+    var showCategoryMenu by remember { mutableStateOf(false) }
     
     val tasks by viewModel.tasks.collectAsState(initial = emptyList())
     val overdueTasks by viewModel.overdueTasks.collectAsState(initial = emptyList())
@@ -34,6 +36,15 @@ fun TodoListScreen(
             TopAppBar(
                 title = { Text("Minhas Tarefas") },
                 actions = {
+                    // Botão de categorias
+                    IconButton(onClick = { showCategoryMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = "Filtrar por categoria"
+                        )
+                    }
+                    
+                    // Botão de ordenação
                     IconButton(onClick = { viewModel.toggleSortByPriority() }) {
                         Icon(
                             imageVector = Icons.Default.Sort,
@@ -41,6 +52,7 @@ fun TodoListScreen(
                         )
                     }
                     
+                    // Botão de filtros
                     IconButton(onClick = { showFilterMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.FilterList,
@@ -65,6 +77,31 @@ fun TodoListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Filtros de categoria
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    FilterChip(
+                        selected = false,
+                        onClick = { viewModel.filterByCategory(null) },
+                        label = { Text("Todas") }
+                    )
+                }
+                items(TaskCategory.values()) { category ->
+                    FilterChip(
+                        selected = false, // TODO: Adicionar estado de seleção
+                        onClick = { viewModel.filterByCategory(category) },
+                        label = { 
+                            Text(category.name.lowercase().replaceFirstChar { it.uppercase() })
+                        }
+                    )
+                }
+            }
+
             if (overdueTasks.isNotEmpty()) {
                 Card(
                     modifier = Modifier
@@ -107,6 +144,9 @@ fun TodoListScreen(
                         },
                         onUpdateDueDate = { task, date ->
                             viewModel.updateTaskDueDate(task, date)
+                        },
+                        onUpdateCategory = { task, category ->
+                            viewModel.updateTaskCategory(task, category)
                         }
                     )
                 }
@@ -116,13 +156,14 @@ fun TodoListScreen(
         if (showAddDialog) {
             AddTaskDialog(
                 onDismiss = { showAddDialog = false },
-                onTaskAdded = { title, date, priority ->
-                    viewModel.addTask(title, date, priority)
+                onTaskAdded = { title, date, priority, category ->
+                    viewModel.addTask(title, date, priority, category)
                     showAddDialog = false
                 }
             )
         }
 
+        // Menu de filtros de status
         DropdownMenu(
             expanded = showFilterMenu,
             onDismissRequest = { showFilterMenu = false }
@@ -148,6 +189,29 @@ fun TodoListScreen(
                     showFilterMenu = false
                 }
             )
+        }
+
+        // Menu de categorias
+        DropdownMenu(
+            expanded = showCategoryMenu,
+            onDismissRequest = { showCategoryMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Todas as Categorias") },
+                onClick = {
+                    viewModel.filterByCategory(null)
+                    showCategoryMenu = false
+                }
+            )
+            TaskCategory.values().forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    onClick = {
+                        viewModel.filterByCategory(category)
+                        showCategoryMenu = false
+                    }
+                )
+            }
         }
     }
 }
