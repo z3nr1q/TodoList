@@ -1,133 +1,100 @@
 package com.example.todolist
 
 import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.util.Date
+import java.util.*
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
-    private val database = TaskDatabase.getDatabase(application)
-    private val taskDao = database.taskDao()
-
-    // Estado para controlar a ordenação e filtragem
-    private val _filterCompleted = MutableStateFlow<Boolean?>(null)
-    private val _sortByPriority = MutableStateFlow(false)
-    private val _filterCategory = MutableStateFlow<TaskCategory?>(null)
-
-    // Combina os filtros com as tarefas
-    val tasks: StateFlow<List<Task>> = combine(
-        taskDao.getAllTasks(),
-        _filterCompleted,
-        _sortByPriority,
-        _filterCategory
-    ) { tasks, filterCompleted, sortByPriority, filterCategory ->
-        var result = tasks
-        
-        // Aplica filtro de status (completo/incompleto)
-        filterCompleted?.let { completed ->
-            result = result.filter { it.isCompleted == completed }
+    private val taskDao = TaskDatabase.getDatabase(application).taskDao()
+    private val _selectedCategory = MutableStateFlow<TaskCategory?>(null)
+    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
+    val tasks = combine(
+        _tasks,
+        _selectedCategory
+    ) { tasks, category ->
+        when (category) {
+            null -> tasks
+            else -> tasks.filter { it.category == category }
         }
-
-        // Aplica filtro de categoria
-        filterCategory?.let { category ->
-            result = result.filter { it.category == category }
-        }
-
-        // Aplica ordenação por prioridade
-        if (sortByPriority) {
-            result = result.sortedBy { 
-                when (it.priority) {
-                    TaskPriority.ALTA -> 0
-                    TaskPriority.MEDIA -> 1
-                    TaskPriority.BAIXA -> 2
-                }
-            }
-        }
-
-        result
     }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        emptyList()
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
     )
 
-    // Tarefas atrasadas
-    val overdueTasks = taskDao.getOverdueTasks(System.currentTimeMillis())
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
-        )
+    val selectedCategory: TaskCategory?
+        get() = _selectedCategory.value
+
+    var selectedCategoryState by mutableStateOf<TaskCategory?>(null)
+        private set
+
+    init {
+        loadTasks()
+    }
+
+    private fun loadTasks() {
+        viewModelScope.launch {
+            taskDao.getAllTasks().collect { taskList ->
+                _tasks.value = taskList
+            }
+        }
+    }
 
     fun addTask(
-        title: String, 
-        dueDate: Date? = null, 
+        title: String,
+        dueDate: Date? = null,
         priority: TaskPriority = TaskPriority.MEDIA,
         category: TaskCategory = TaskCategory.OUTROS
     ) {
         viewModelScope.launch {
-            taskDao.insertTask(
-                Task(
-                    title = title,
-                    dueDate = dueDate,
-                    priority = priority,
-                    category = category
-                )
+            val task = Task(
+                title = title,
+                dueDate = dueDate,
+                priority = priority,
+                category = category
             )
+            taskDao.insert(task)
         }
     }
 
-    fun toggleTask(task: Task) {
+    fun toggleTaskCompleted(task: Task) {
         viewModelScope.launch {
-            taskDao.updateTask(task.copy(isCompleted = !task.isCompleted))
+            taskDao.update(task.copy(isCompleted = !task.isCompleted))
         }
     }
 
     fun deleteTask(task: Task) {
         viewModelScope.launch {
-            taskDao.deleteTask(task)
+            taskDao.delete(task)
         }
     }
 
     fun updateTaskPriority(task: Task, priority: TaskPriority) {
         viewModelScope.launch {
-            taskDao.updateTask(task.copy(priority = priority))
+            taskDao.update(task.copy(priority = priority))
         }
     }
 
     fun updateTaskDueDate(task: Task, dueDate: Date?) {
         viewModelScope.launch {
-            taskDao.updateTask(task.copy(dueDate = dueDate))
+            taskDao.update(task.copy(dueDate = dueDate))
         }
     }
 
     fun updateTaskCategory(task: Task, category: TaskCategory) {
         viewModelScope.launch {
-            taskDao.updateTask(task.copy(category = category))
+            taskDao.update(task.copy(category = category))
         }
     }
 
-    // Funções para controlar filtros e ordenação
-    fun showAllTasks() {
-        _filterCompleted.value = null
-        _filterCategory.value = null
-    }
-
-    fun showCompletedTasks() {
-        _filterCompleted.value = true
-    }
-
-    fun showIncompleteTasks() {
-        _filterCompleted.value = false
-    }
-
     fun filterByCategory(category: TaskCategory?) {
-        _filterCategory.value = category
-    }
-
-    fun toggleSortByPriority() {
-        _sortByPriority.value = !_sortByPriority.value
+        _selectedCategory.value = category
+        selectedCategoryState = category
     }
 }

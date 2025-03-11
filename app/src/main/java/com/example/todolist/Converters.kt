@@ -1,7 +1,7 @@
 package com.example.todolist
 
 import androidx.room.TypeConverter
-import java.util.Date
+import java.util.*
 
 class Converters {
     @TypeConverter
@@ -22,5 +22,15 @@ class Converters {
     @TypeConverter
     fun toPriority(value: String): TaskPriority {
         return TaskPriority.valueOf(value)
+    }
+
+    @TypeConverter
+    fun fromCategory(category: TaskCategory): String {
+        return category.name
+    }
+
+    @TypeConverter
+    fun toCategory(value: String): TaskCategory {
+        return TaskCategory.valueOf(value)
     }
 }

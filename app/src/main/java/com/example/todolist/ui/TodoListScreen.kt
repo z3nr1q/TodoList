@@ -2,216 +2,188 @@ package com.example.todolist.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.todolist.TaskViewModel
 import com.example.todolist.Task
-import com.example.todolist.TaskPriority
 import com.example.todolist.TaskCategory
-import java.util.Date
+import com.example.todolist.TaskPriority
+import com.example.todolist.TaskViewModel
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoListScreen(
-    viewModel: TaskViewModel = viewModel()
+    viewModel: TaskViewModel
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    var showFilterMenu by remember { mutableStateOf(false) }
-    var showCategoryMenu by remember { mutableStateOf(false) }
-    
-    val tasks by viewModel.tasks.collectAsState(initial = emptyList())
-    val overdueTasks by viewModel.overdueTasks.collectAsState(initial = emptyList())
+    val tasks by viewModel.tasks.collectAsState()
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Minhas Tarefas") },
-                actions = {
-                    // Botão de categorias
-                    IconButton(onClick = { showCategoryMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar por categoria"
-                        )
-                    }
-                    
-                    // Botão de ordenação
-                    IconButton(onClick = { viewModel.toggleSortByPriority() }) {
-                        Icon(
-                            imageVector = Icons.Default.Sort,
-                            contentDescription = "Ordenar por prioridade"
-                        )
-                    }
-                    
-                    // Botão de filtros
-                    IconButton(onClick = { showFilterMenu = true }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filtrar tarefas"
-                        )
-                    }
+            CenterAlignedTopAppBar(
+                title = { 
+                    Text(
+                        "Lista de Tarefas",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             )
         },
-        
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Adicionar tarefa"
-                )
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Adicionar tarefa")
             }
         }
-    ) { paddingValues ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(padding)
         ) {
             // Filtros de categoria
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                tonalElevation = 1.dp,
+                color = MaterialTheme.colorScheme.surface
             ) {
-                item {
-                    FilterChip(
-                        selected = false,
-                        onClick = { viewModel.filterByCategory(null) },
-                        label = { Text("Todas") }
-                    )
-                }
-                items(TaskCategory.values()) { category ->
-                    FilterChip(
-                        selected = false, // TODO: Adicionar estado de seleção
-                        onClick = { viewModel.filterByCategory(category) },
-                        label = { 
-                            Text(category.name.lowercase().replaceFirstChar { it.uppercase() })
-                        }
-                    )
-                }
-            }
-
-            if (overdueTasks.isNotEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    Text(
+                        text = "Categorias",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                    )
+                    
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "Tarefas Atrasadas",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        overdueTasks.forEach { task ->
-                            Text(
-                                text = task.title,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(vertical = 4.dp)
+                        item {
+                            FilterChip(
+                                selected = viewModel.selectedCategory == null,
+                                onClick = { viewModel.filterByCategory(null) },
+                                label = { Text("Todas") },
+                                leadingIcon = if (viewModel.selectedCategory == null) {
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else null
+                            )
+                        }
+                        
+                        items(TaskCategory.values()) { category ->
+                            FilterChip(
+                                selected = viewModel.selectedCategory == category,
+                                onClick = { viewModel.filterByCategory(category) },
+                                label = { 
+                                    Text(
+                                        category.name.lowercase()
+                                            .replaceFirstChar { it.uppercase() }
+                                    )
+                                },
+                                leadingIcon = if (viewModel.selectedCategory == category) {
+                                    {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                } else {
+                                    {
+                                        Icon(
+                                            Icons.Default.Label,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             )
                         }
                     }
                 }
             }
 
-            LazyColumn(
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                items(tasks) { task ->
-                    TaskItem(
-                        task = task,
-                        onToggleComplete = { viewModel.toggleTask(it) },
-                        onDelete = { viewModel.deleteTask(it) },
-                        onUpdatePriority = { task, priority -> 
-                            viewModel.updateTaskPriority(task, priority)
-                        },
-                        onUpdateDueDate = { task, date ->
-                            viewModel.updateTaskDueDate(task, date)
-                        },
-                        onUpdateCategory = { task, category ->
-                            viewModel.updateTaskCategory(task, category)
-                        }
-                    )
-                }
-            }
-        }
-
-        if (showAddDialog) {
-            AddTaskDialog(
-                onDismiss = { showAddDialog = false },
-                onTaskAdded = { title, date, priority, category ->
-                    viewModel.addTask(title, date, priority, category)
-                    showAddDialog = false
-                }
-            )
-        }
-
-        // Menu de filtros de status
-        DropdownMenu(
-            expanded = showFilterMenu,
-            onDismissRequest = { showFilterMenu = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("Todas") },
-                onClick = {
-                    viewModel.showAllTasks()
-                    showFilterMenu = false
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Pendentes") },
-                onClick = {
-                    viewModel.showIncompleteTasks()
-                    showFilterMenu = false
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Concluídas") },
-                onClick = {
-                    viewModel.showCompletedTasks()
-                    showFilterMenu = false
-                }
-            )
-        }
-
-        // Menu de categorias
-        DropdownMenu(
-            expanded = showCategoryMenu,
-            onDismissRequest = { showCategoryMenu = false }
-        ) {
-            DropdownMenuItem(
-                text = { Text("Todas as Categorias") },
-                onClick = {
-                    viewModel.filterByCategory(null)
-                    showCategoryMenu = false
-                }
-            )
-            TaskCategory.values().forEach { category ->
-                DropdownMenuItem(
-                    text = { Text(category.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                    onClick = {
-                        viewModel.filterByCategory(category)
-                        showCategoryMenu = false
+            // Lista de tarefas
+            if (tasks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.List,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = if (viewModel.selectedCategory == null)
+                                "Nenhuma tarefa encontrada"
+                            else
+                                "Nenhuma tarefa na categoria ${
+                                    viewModel.selectedCategory.toString()
+                                        .lowercase()
+                                        .replaceFirstChar { it.uppercase() }
+                                }",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    items(tasks) { task ->
+                        TaskItem(
+                            task = task,
+                            onToggleComplete = viewModel::toggleTaskCompleted,
+                            onDelete = viewModel::deleteTask,
+                            onUpdatePriority = viewModel::updateTaskPriority,
+                            onUpdateDueDate = viewModel::updateTaskDueDate,
+                            onUpdateCategory = viewModel::updateTaskCategory
+                        )
+                    }
+                }
             }
         }
+    }
+
+    if (showAddDialog) {
+        AddTaskDialog(
+            onDismiss = { showAddDialog = false },
+            onTaskAdded = { title, dueDate, priority, category ->
+                viewModel.addTask(title, dueDate, priority, category)
+                showAddDialog = false
+            }
+        )
     }
 }

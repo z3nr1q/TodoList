@@ -2,13 +2,7 @@ package com.example.todolist
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.Date
-
-enum class TaskPriority {
-    ALTA,
-    MEDIA,
-    BAIXA
-}
+import java.util.*
 
 enum class TaskCategory {
     PESSOAL,
@@ -16,6 +10,12 @@ enum class TaskCategory {
     ESTUDOS,
     COMPRAS,
     OUTROS
+}
+
+enum class TaskPriority {
+    ALTA,
+    MEDIA,
+    BAIXA
 }
 
 @Entity(tableName = "tasks")

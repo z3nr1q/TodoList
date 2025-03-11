@@ -1,12 +1,11 @@
 package com.example.todolist
 
 import android.content.Context
-import androidx.room.Database
-import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
+import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Task::class], version = 2, exportSchema = false)
+@Database(entities = [Task::class], version = 2)
 @TypeConverters(Converters::class)
 abstract class TaskDatabase : RoomDatabase() {
     abstract fun taskDao(): TaskDao
@@ -22,10 +21,19 @@ abstract class TaskDatabase : RoomDatabase() {
                     TaskDatabase::class.java,
                     "task_database"
                 )
-                .fallbackToDestructiveMigration() // Como você está aprendendo, vamos usar isso por enquanto
+                .addMigrations(MIGRATION_1_2)
                 .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Adiciona a coluna category com valor padrão OUTROS
+                database.execSQL(
+                    "ALTER TABLE tasks ADD COLUMN category TEXT NOT NULL DEFAULT 'OUTROS'"
+                )
             }
         }
     }

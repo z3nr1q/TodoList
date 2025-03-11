@@ -2,19 +2,17 @@ package com.example.todolist.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.todolist.Task
-import com.example.todolist.TaskPriority
 import com.example.todolist.TaskCategory
+import com.example.todolist.TaskPriority
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -28,119 +26,160 @@ fun TaskItem(
     onUpdateDueDate: (Task, Date?) -> Unit,
     onUpdateCategory: (Task, TaskCategory) -> Unit
 ) {
-    var showPriorityMenu by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showPriorityMenu by remember { mutableStateOf(false) }
     var showCategoryMenu by remember { mutableStateOf(false) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when {
+                task.isCompleted -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                task.dueDate?.before(Date()) == true -> MaterialTheme.colorScheme.errorContainer
+                else -> MaterialTheme.colorScheme.surface
+            }
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (task.isCompleted) 0.dp else 1.dp
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Checkbox e título
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
                         checked = task.isCompleted,
                         onCheckedChange = { onToggleComplete(task) }
                     )
-                    Column(
+                    
+                    Text(
+                        text = task.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        textDecoration = if (task.isCompleted) 
+                            TextDecoration.LineThrough 
+                        else 
+                            TextDecoration.None,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(start = 8.dp)
-                    ) {
-                        Text(
-                            text = task.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            textDecoration = if (task.isCompleted) 
-                                TextDecoration.LineThrough 
-                            else 
-                                TextDecoration.None
-                        )
-                        
-                        // Categoria e Data em uma linha
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
-                            // Categoria
-                            AssistChip(
-                                onClick = { showCategoryMenu = true },
-                                label = { 
-                                    Text(
-                                        task.category.name.lowercase()
-                                            .replaceFirstChar { it.uppercase() }
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.Category,
-                                        contentDescription = "Categoria",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                },
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            
-                            // Data de vencimento
-                            task.dueDate?.let { date ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.DateRange,
-                                        contentDescription = "Data de vencimento",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = SimpleDateFormat(
-                                            "dd/MM/yyyy", 
-                                            Locale.getDefault()
-                                        ).format(date),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(start = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    )
                 }
 
-                // Ícones de ações
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Botão de prioridade
-                    IconButton(onClick = { showPriorityMenu = true }) {
+                IconButton(onClick = { showOptionsMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "Opções"
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Categoria
+                FilterChip(
+                    selected = false,
+                    onClick = { showCategoryMenu = true },
+                    label = {
+                        Text(
+                            task.category.name.lowercase()
+                                .replaceFirstChar { it.uppercase() }
+                        )
+                    },
+                    leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Flag,
-                            contentDescription = "Prioridade",
-                            tint = when (task.priority) {
-                                TaskPriority.ALTA -> MaterialTheme.colorScheme.error
-                                TaskPriority.MEDIA -> MaterialTheme.colorScheme.secondary
-                                TaskPriority.BAIXA -> MaterialTheme.colorScheme.tertiary
+                            imageVector = Icons.Default.Label,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                )
+
+                // Prioridade
+                FilterChip(
+                    selected = true,
+                    onClick = { showPriorityMenu = true },
+                    label = {
+                        Text(
+                            when (task.priority) {
+                                TaskPriority.ALTA -> "Alta"
+                                TaskPriority.MEDIA -> "Média"
+                                TaskPriority.BAIXA -> "Baixa"
                             }
                         )
-                    }
-
-                    // Botão de excluir
-                    IconButton(onClick = { onDelete(task) }) {
+                    },
+                    leadingIcon = {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Excluir tarefa"
+                            imageVector = Icons.Default.Flag,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
                         )
-                    }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = when (task.priority) {
+                            TaskPriority.ALTA -> MaterialTheme.colorScheme.errorContainer
+                            TaskPriority.MEDIA -> MaterialTheme.colorScheme.secondaryContainer
+                            TaskPriority.BAIXA -> MaterialTheme.colorScheme.tertiaryContainer
+                        },
+                        selectedLabelColor = when (task.priority) {
+                            TaskPriority.ALTA -> MaterialTheme.colorScheme.onErrorContainer
+                            TaskPriority.MEDIA -> MaterialTheme.colorScheme.onSecondaryContainer
+                            TaskPriority.BAIXA -> MaterialTheme.colorScheme.onTertiaryContainer
+                        }
+                    )
+                )
+
+                // Data
+                if (task.dueDate != null) {
+                    FilterChip(
+                        selected = false,
+                        onClick = { showDatePicker = true },
+                        label = {
+                            Text(
+                                SimpleDateFormat(
+                                    "dd/MM/yyyy",
+                                    Locale.getDefault()
+                                ).format(task.dueDate)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Event,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    )
                 }
             }
         }
+    }
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDateSelected = { date ->
+                onUpdateDueDate(task, date)
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
     }
 
     // Menu de prioridade
@@ -150,7 +189,7 @@ fun TaskItem(
     ) {
         TaskPriority.values().forEach { priority ->
             DropdownMenuItem(
-                text = { 
+                text = {
                     Text(
                         when (priority) {
                             TaskPriority.ALTA -> "Alta"
@@ -162,6 +201,17 @@ fun TaskItem(
                 onClick = {
                     onUpdatePriority(task, priority)
                     showPriorityMenu = false
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = null,
+                        tint = when (priority) {
+                            TaskPriority.ALTA -> MaterialTheme.colorScheme.error
+                            TaskPriority.MEDIA -> MaterialTheme.colorScheme.secondary
+                            TaskPriority.BAIXA -> MaterialTheme.colorScheme.tertiary
+                        }
+                    )
                 }
             )
         }
@@ -174,27 +224,44 @@ fun TaskItem(
     ) {
         TaskCategory.values().forEach { category ->
             DropdownMenuItem(
-                text = { 
+                text = {
                     Text(
-                        category.name.lowercase().replaceFirstChar { it.uppercase() }
+                        category.name.lowercase()
+                            .replaceFirstChar { it.uppercase() }
                     )
                 },
                 onClick = {
                     onUpdateCategory(task, category)
                     showCategoryMenu = false
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Label,
+                        contentDescription = null
+                    )
                 }
             )
         }
     }
 
-    // Seletor de data
-    if (showDatePicker) {
-        DatePickerDialog(
-            onDateSelected = { date ->
-                onUpdateDueDate(task, date)
-                showDatePicker = false
+    // Menu de opções
+    DropdownMenu(
+        expanded = showOptionsMenu,
+        onDismissRequest = { showOptionsMenu = false }
+    ) {
+        DropdownMenuItem(
+            text = { Text("Excluir") },
+            onClick = {
+                onDelete(task)
+                showOptionsMenu = false
             },
-            onDismiss = { showDatePicker = false }
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         )
     }
 }
